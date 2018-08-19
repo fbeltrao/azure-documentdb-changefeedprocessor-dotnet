@@ -383,6 +383,9 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
             var partitionController = new PartitionReaderController(leaseManager, actualPartitionReaderFactory, synchronizer);
             if (this.loadBalancingStrategy == null)
             {
+                if (string.IsNullOrEmpty(this.HostName))
+                    this.HostName = Environment.MachineName;
+
                 this.loadBalancingStrategy = new EqualPartitionsBalancingStrategy(this.HostName, this.changeFeedProcessorOptions.MinPartitionCount, this.changeFeedProcessorOptions.MaxPartitionCount, this.changeFeedProcessorOptions.LeaseExpirationInterval);
             }
 
