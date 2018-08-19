@@ -21,7 +21,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
             this.partitionLoadBalancer = partitionLoadBalancer;
         }
 
-        public async Task<PartitionDocument> ReadAsync()
+        public async Task<ChangeFeedDocumentChanges> ReadAsync()
         {
             return await this.partitionController.ReadAsync().ConfigureAwait(false);
         }

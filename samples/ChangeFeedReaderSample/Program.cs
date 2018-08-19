@@ -1,5 +1,4 @@
-﻿using DocumentDB.Queue;
-using Microsoft.Azure.Documents;
+﻿using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.ChangeFeedProcessor;
 using Microsoft.Azure.Documents.ChangeFeedProcessor.Reader;
 using Microsoft.Azure.Documents.Client;
@@ -7,60 +6,42 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace CosmosQueueSample
+namespace ChangeFeedReaderSample
 {
-    class QueueSample
+    class Program
     {
-        private const string DbName = "QueueDB";
+        private const string DbName = "DB";
 
-        internal static async Task Run()
+
+        static async Task Main(string[] args)
         {
             var dbUri = "https://localhost:8081/";
             var key = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-            var collectionName = "Queue";
+            var collectionName = "Input";
 
             await SetupEnvironmentAsync(dbUri, key, collectionName);
 
-            var queue = await CreateQueueAsync(dbUri, key, collectionName);
+            CancellationTokenSource cts = new CancellationTokenSource();
 
-            Console.WriteLine("Press ENTER to enqueue, d to enqueue, da to dequeue and abandon, exit to stop");
+            Task feedingTask = StartFeedingDataAsync(dbUri, key, collectionName, cts.Token);
+
+            var processor = await RunChangeFeedProcessorAsync(dbUri, key, collectionName);
+
+            Console.WriteLine("Running...[Press ENTER to read, exit to stop]");
             var input = Console.ReadLine();
             while (!input.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
             {
-                if (input.Equals("d", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    var messages = await queue.Dequeue();
-                    Console.WriteLine($"Dequeued {messages.Count} document(s)");
+                var changeFeed = await processor.ReadAsync().ConfigureAwait(false);
+                Console.WriteLine($"Read {changeFeed.Docs.Count} documents");
+                await changeFeed.SaveCheckpointAsync().ConfigureAwait(false);
 
-                    foreach (var message in messages)
-                    {
-                        Console.WriteLine($"Dequeued message {message.Id}");
-                        await queue.Complete(message);
-                    }
-                }
-                else if (input.Equals("da", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    var messages = await queue.Dequeue();
-                    Console.WriteLine($"Dequeued {messages.Count} document(s)");
-
-                    foreach (var message in messages)
-                    {
-                        Console.WriteLine($"Dequeued message {message.Id}");
-                        await queue.Abandon(message);
-                        Console.WriteLine($"Abandoned message {message.Id}");
-                    }
-                }
-                else
-                {
-                    var newDocumentId = await queue.Enqueue(new { id = Guid.NewGuid().ToString() });
-                    Console.WriteLine($"Enqueued document {newDocumentId}");
-                   
-                }
-               
                 input = Console.ReadLine();
             }
 
             Console.WriteLine("Stopping...");
+            cts.Cancel();
+            await feedingTask.ConfigureAwait(false);
+            await processor.StopAsync().ConfigureAwait(false);
             Console.WriteLine("Stopped");
             Console.ReadLine();
         }
@@ -85,7 +66,7 @@ namespace CosmosQueueSample
                 while (!ctsToken.IsCancellationRequested)
                 {
                     await client.CreateDocumentAsync(collectionUri, new { type = "event", id = Guid.NewGuid().ToString() });
-                    await Task.Delay(1000 * 5);
+                    await Task.Delay(500);
                 }
             }
 
@@ -105,7 +86,8 @@ namespace CosmosQueueSample
                  })
                  .WithProcessorOptions(new ChangeFeedProcessorOptions
                  {
-                     MaxItemCount = 1
+                     MaxItemCount = 10,
+                     StartFromBeginning = true,
                  })
                  .WithLeaseCollection(new DocumentCollectionInfo()
                  {
@@ -120,38 +102,6 @@ namespace CosmosQueueSample
             await processor.StartAsync().ConfigureAwait(false);
             return processor;
         }
-
-        private static async Task<CosmosDBQueue> CreateQueueAsync(string uri, string key, string collection)
-        {
-            var builder = new ChangeFeedReaderBuilder()
-                 .WithHostName("console_app_host")
-                 .WithFeedCollection(new DocumentCollectionInfo()
-                 {
-                     Uri = new Uri(uri),
-                     MasterKey = key,
-                     CollectionName = collection,
-                     DatabaseName = DbName
-                 })
-                 .WithProcessorOptions(new ChangeFeedProcessorOptions
-                 {
-                     MaxItemCount = 1
-                 })
-                 .WithLeaseCollection(new DocumentCollectionInfo()
-                 {
-                     CollectionName = $"{collection}.Lease.ConsoleApp",
-                     DatabaseName = DbName,
-                     Uri = new Uri(uri),
-                     MasterKey = key
-                 });
-
-            var processor = await builder.BuildAsync();
-
-            await processor.StartAsync().ConfigureAwait(false);
-
-            var queue = new CosmosDBQueue(processor, builder.GetFeedDocumentClient(), builder.GetFeedCollectionInfo());
-            return queue;
-        }
-
 
     }
 }

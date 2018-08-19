@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CosmosQueueSample", "..\sam
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentDB.Queue", "DocumentDB.Queue\DocumentDB.Queue.csproj", "{8CF2AE05-98F1-411D-82B2-0D1C62B496BC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChangeFeedReaderSample", "..\samples\ChangeFeedReaderSample\ChangeFeedReaderSample.csproj", "{B8F1BE81-746B-4878-A68E-BDD7B91EC1ED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,12 +48,17 @@ Global
 		{8CF2AE05-98F1-411D-82B2-0D1C62B496BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8CF2AE05-98F1-411D-82B2-0D1C62B496BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8CF2AE05-98F1-411D-82B2-0D1C62B496BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8F1BE81-746B-4878-A68E-BDD7B91EC1ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8F1BE81-746B-4878-A68E-BDD7B91EC1ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8F1BE81-746B-4878-A68E-BDD7B91EC1ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8F1BE81-746B-4878-A68E-BDD7B91EC1ED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{6CF0725A-5C82-4D7B-8FC0-30C6791F683A} = {F51D2B22-7F4B-4DBD-87EA-1FB3FB7DF95E}
+		{B8F1BE81-746B-4878-A68E-BDD7B91EC1ED} = {F51D2B22-7F4B-4DBD-87EA-1FB3FB7DF95E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8D25B92A-07EF-451B-941E-93CADD8886B6}

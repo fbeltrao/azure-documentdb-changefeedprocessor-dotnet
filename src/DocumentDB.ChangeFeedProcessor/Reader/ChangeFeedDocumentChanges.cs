@@ -11,52 +11,54 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
     using Microsoft.Azure.Documents.ChangeFeedProcessor.FeedProcessing;
 
     /// <summary>
-    /// Result of a <see cref="IPartitionReader.ReadAsync"/>
+    /// Result of a <see cref="IPartitionReader.ReadAsync"/> returning a collection of <see cref="Document"/>
     /// </summary>
-    public class PartitionDocument
+    public class ChangeFeedDocumentChanges
     {
         private IReadOnlyList<IChangeFeedObserverContext> contexts;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="PartitionDocument"/> class.
+        /// Initializes a new instance of the <see cref="ChangeFeedDocumentChanges"/> class.
         /// </summary>
-        public PartitionDocument()
+        public ChangeFeedDocumentChanges()
         {
             this.Docs = new Document[0];
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="PartitionDocument"/> class.
+        /// Initializes a new instance of the <see cref="ChangeFeedDocumentChanges"/> class.
         /// </summary>
         /// <param name="context">Context</param>
         /// <param name="docs">Documents</param>
-        public PartitionDocument(IReadOnlyList<Document> docs, IChangeFeedObserverContext context)
+        public ChangeFeedDocumentChanges(IReadOnlyList<Document> docs, IChangeFeedObserverContext context)
         {
             this.Docs = docs;
             this.contexts = new IChangeFeedObserverContext[] { context };
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="PartitionDocument"/> class.
+        /// Initializes a new instance of the <see cref="ChangeFeedDocumentChanges"/> class.
         /// </summary>
         /// <param name="contexts">Contexts</param>
         /// <param name="docs">Documents</param>
-        public PartitionDocument(IReadOnlyList<Document> docs, IReadOnlyList<IChangeFeedObserverContext> contexts)
+        public ChangeFeedDocumentChanges(IReadOnlyList<Document> docs, IReadOnlyList<IChangeFeedObserverContext> contexts)
         {
             this.Docs = docs;
             this.contexts = contexts;
         }
 
         /// <summary>
-        /// Gets the documents
+        /// Gets the documents that have changed
         /// </summary>
         public IReadOnlyList<Document> Docs { get; private set; }
 
         /// <summary>
-        /// Updates checkpoint
+        /// Saves the checkpoint where the change feed should resume reading.
+        /// Does not affect the current reader as the cursor is kept in memory.
+        /// Partition redistribution or host restart will resume from the updated checkpoint
         /// </summary>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-        public async Task CheckpointAsync()
+        public async Task SaveCheckpointAsync()
         {
             if (this.contexts != null)
             {
@@ -70,7 +72,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
             }
         }
 
-        internal static PartitionDocument Combine(IEnumerable<PartitionDocument> collection)
+        internal static ChangeFeedDocumentChanges Combine(IEnumerable<ChangeFeedDocumentChanges> collection)
         {
             var docs = new List<Document>();
             var contexts = new List<IChangeFeedObserverContext>();
@@ -80,7 +82,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
                 contexts.AddRange(item.contexts);
             }
 
-            return new PartitionDocument(docs, contexts);
+            return new ChangeFeedDocumentChanges(docs, contexts);
         }
     }
 }

@@ -89,7 +89,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
             this.renewerCancellation.Dispose();
         }
 
-        public async Task<PartitionDocument> ReadAsync()
+        public async Task<ChangeFeedDocumentChanges> ReadAsync()
         {
             this.lastContinuation = this.lastContinuation ?? this.settings.RequestContinuation;
 
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
                 while (this.query.HasMoreResults && docs.Count < this.options.MaxItemCount && !cancellationToken.IsCancellationRequested);
 
                 IChangeFeedObserverContext context = new ChangeFeedObserverContext(this.settings.PartitionKeyRangeId, response, this.checkpointer);
-                return new PartitionDocument(docs, context);
+                return new ChangeFeedDocumentChanges(docs, context);
             }
             catch (DocumentClientException clientException)
             {
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
                 // ignore as it is caused by DocumentDB client
             }
 
-            return new PartitionDocument();
+            return new ChangeFeedDocumentChanges();
         }
     }
 }

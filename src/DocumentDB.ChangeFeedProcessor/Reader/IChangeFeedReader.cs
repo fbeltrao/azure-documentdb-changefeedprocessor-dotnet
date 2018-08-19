@@ -31,6 +31,6 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
         /// Reads a partition
         /// </summary>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-        Task<PartitionDocument> ReadAsync();
+        Task<ChangeFeedDocumentChanges> ReadAsync();
     }
 }

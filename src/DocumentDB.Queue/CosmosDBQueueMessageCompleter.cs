@@ -5,10 +5,10 @@ namespace DocumentDB.Queue
 {
     public class CosmosDBQueueMessageCompleter
     {
-        private readonly PartitionDocument result;
+        private readonly ChangeFeedDocumentChanges result;
         private bool completed;
 
-        public CosmosDBQueueMessageCompleter(PartitionDocument result)
+        public CosmosDBQueueMessageCompleter(ChangeFeedDocumentChanges result)
         {
             this.result = result;
         }
@@ -17,7 +17,7 @@ namespace DocumentDB.Queue
             if (!this.completed)
             {
                 this.completed = true;
-                await result.CheckpointAsync();
+                await result.SaveCheckpointAsync();
             }
         }
 

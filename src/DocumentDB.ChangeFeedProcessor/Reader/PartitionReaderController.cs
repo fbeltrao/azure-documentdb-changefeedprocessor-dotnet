@@ -74,9 +74,9 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
             return Task.FromResult(0);
         }
 
-        public async Task<PartitionDocument> ReadAsync()
+        public async Task<ChangeFeedDocumentChanges> ReadAsync()
         {
-            var readTasks = new List<Task<PartitionDocument>>();
+            var readTasks = new List<Task<ChangeFeedDocumentChanges>>();
 
             foreach (var kv in this.currentlyOwnedPartitions)
             {
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
 
             await Task.WhenAll(readTasks).ConfigureAwait(false);
 
-            return PartitionDocument.Combine(readTasks.Select(x => x.Result));
+            return ChangeFeedDocumentChanges.Combine(readTasks.Select(x => x.Result));
         }
 
         private async Task LoadLeasesAsync()

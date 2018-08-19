@@ -12,6 +12,6 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
 
     internal interface IPartitionReaderManager : IPartitionManager
     {
-        Task<PartitionDocument> ReadAsync();
+        Task<ChangeFeedDocumentChanges> ReadAsync();
     }
 }

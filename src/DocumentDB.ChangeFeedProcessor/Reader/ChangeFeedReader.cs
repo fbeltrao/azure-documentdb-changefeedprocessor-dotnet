@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
             Logger.InfoFormat("Processor stopped.");
         }
 
-        public async Task<PartitionDocument> ReadAsync()
+        public async Task<ChangeFeedDocumentChanges> ReadAsync()
         {
             return await this.partitionManager.ReadAsync().ConfigureAwait(false);
         }
