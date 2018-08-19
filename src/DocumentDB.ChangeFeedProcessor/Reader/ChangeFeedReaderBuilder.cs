@@ -166,6 +166,12 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
             return this;
         }
 
+                /// <summary>
+        /// Gets the feed document client
+        /// </summary>
+        /// <returns>Feed document client</returns>
+        public DocumentClient GetFeedDocumentClient() => this.feedDocumentClient.GetDocumentClient();
+
         /// <summary>
         /// Sets an existing <see cref="IChangeFeedDocumentClient"/> to be used to read from the monitored collection.
         /// </summary>
@@ -177,12 +183,6 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
             this.feedDocumentClient = feedDocumentClient;
             return this;
         }
-
-        /// <summary>
-        /// Gets the feed document client
-        /// </summary>
-        /// <returns>Feed document client</returns>
-        public IChangeFeedDocumentClient GetFeedDocumentClient() => this.feedDocumentClient;
 
         /// <summary>
         /// Sets the <see cref="ChangeFeedProcessorOptions"/> to be used by this instance of <see cref="IChangeFeedProcessor"/>.

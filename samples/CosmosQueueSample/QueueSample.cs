@@ -23,16 +23,11 @@ namespace CosmosQueueSample
 
             var queue = await CreateQueueAsync(dbUri, key, collectionName);
 
-            Console.WriteLine("Running...[Press ENTER to read, exit to stop]");
+            Console.WriteLine("Press ENTER to enqueue, d to enqueue, da to dequeue and abandon, exit to stop");
             var input = Console.ReadLine();
             while (!input.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
             {
-                if (input.Equals("q", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    var newDocumentId = await queue.Enqueue(new { id = Guid.NewGuid().ToString() });
-                    Console.WriteLine($"Enqueued document {newDocumentId}");
-                }
-                else
+                if (input.Equals("d", StringComparison.InvariantCultureIgnoreCase))
                 {
                     var messages = await queue.Dequeue();
                     Console.WriteLine($"Dequeued {messages.Count} document(s)");
@@ -42,6 +37,24 @@ namespace CosmosQueueSample
                         Console.WriteLine($"Dequeued message {message.Id}");
                         await queue.Complete(message);
                     }
+                }
+                else if (input.Equals("da", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    var messages = await queue.Dequeue();
+                    Console.WriteLine($"Dequeued {messages.Count} document(s)");
+
+                    foreach (var message in messages)
+                    {
+                        Console.WriteLine($"Dequeued message {message.Id}");
+                        await queue.Abandon(message);
+                        Console.WriteLine($"Abandoned message {message.Id}");
+                    }
+                }
+                else
+                {
+                    var newDocumentId = await queue.Enqueue(new { id = Guid.NewGuid().ToString() });
+                    Console.WriteLine($"Enqueued document {newDocumentId}");
+                   
                 }
                
                 input = Console.ReadLine();

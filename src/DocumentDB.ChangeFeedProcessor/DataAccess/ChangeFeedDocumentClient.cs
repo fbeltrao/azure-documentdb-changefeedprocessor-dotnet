@@ -126,5 +126,11 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.DataAccess
         {
             return this.documentClient.CreateDocumentQuery<T>(documentCollectionUri, querySpec);
         }
+
+        /// <summary>
+        /// Gets the document client
+        /// </summary>
+        /// <returns>Returns document client</returns>
+        public DocumentClient GetDocumentClient() => this.documentClient;
     }
 }

@@ -1,5 +1,4 @@
-﻿using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.ChangeFeedProcessor.Reader;
+﻿using Microsoft.Azure.Documents.ChangeFeedProcessor.Reader;
 using Microsoft.Azure.Documents.Client;
 using System;
 using System.Collections.Generic;
@@ -8,43 +7,28 @@ using System.Threading.Tasks;
 
 namespace DocumentDB.Queue
 {
-    public class CosmosDBQueueMessageCompleter
-    {
-        private readonly PartitionDocument result;
-        private bool completed;
-
-        public CosmosDBQueueMessageCompleter(PartitionDocument result)
-        {
-            this.result = result;
-        }
-        public async Task Complete()
-        {
-            if (!this.completed)
-            {
-                this.completed = true;
-                await result.CheckpointAsync();
-            }
-        }
-
-
-    }
 
     public class CosmosDBQueue
     {
         private readonly IChangeFeedReader changeFeedReader;
-        Microsoft.Azure.Documents.ChangeFeedProcessor.DataAccess.IChangeFeedDocumentClient documentClient;
-        private Uri collectionLink;
+        DocumentClient documentClient;
+        private readonly string databaseId;
+        private readonly Uri collectionLink;
+        private readonly string collectionName;
+
+        public bool DeleteDocumentOnComplete { get; set; } = true;
 
         public CosmosDBQueue()
         {
-
         }
 
-        public CosmosDBQueue(IChangeFeedReader changeFeedReader, Microsoft.Azure.Documents.ChangeFeedProcessor.DataAccess.IChangeFeedDocumentClient changeFeedDocumentClient, Microsoft.Azure.Documents.ChangeFeedProcessor.DocumentCollectionInfo documentCollectionInfo)
+        public CosmosDBQueue(IChangeFeedReader changeFeedReader, DocumentClient documentClient, Microsoft.Azure.Documents.ChangeFeedProcessor.DocumentCollectionInfo documentCollectionInfo)
         {
             this.changeFeedReader = changeFeedReader;
-            this.documentClient = changeFeedDocumentClient;
-            this.collectionLink = UriFactory.CreateDocumentCollectionUri(documentCollectionInfo.DatabaseName, documentCollectionInfo.CollectionName);
+            this.documentClient = documentClient;
+            this.databaseId = documentCollectionInfo.DatabaseName;
+            this.collectionName = documentCollectionInfo.CollectionName;
+            this.collectionLink = UriFactory.CreateDocumentCollectionUri(this.databaseId, this.collectionName);
         }
         public async Task<IReadOnlyList<CosmosDBQueueMessage>> Dequeue()
         {
@@ -71,26 +55,39 @@ namespace DocumentDB.Queue
             await cosmosDBQueueMessage.Complete().ConfigureAwait(false);
 
             // TODO: remove document?
+            if (this.DeleteDocumentOnComplete)
+            {
+                await documentClient.DeleteDocumentAsync(
+                    UriFactory.CreateDocumentUri(this.databaseId, this.collectionName, cosmosDBQueueMessage.Data.Id),
+                    new RequestOptions
+                    {
+                        AccessCondition = new Microsoft.Azure.Documents.Client.AccessCondition
+                        {
+                            Condition = cosmosDBQueueMessage.Data.ETag,
+                            Type = AccessConditionType.IfMatch
+                        }
+                    }).ConfigureAwait(false);
+            }
         }
-    }
 
-    public class CosmosDBQueueMessage
-    {
-        private CosmosDBQueueMessageCompleter completer;
-
-        public CosmosDBQueueMessage(Document doc, CosmosDBQueueMessageCompleter completer)
+        public async Task Abandon(CosmosDBQueueMessage cosmosDBQueueMessage)
         {
-            this.Data = doc;
-            this.completer = completer;
+            // Option 1: just don't forward the reader, and reset the continuation value.
+            // The problem lies in having other messages that were already dequeued, which saved the cursor ahead
+
+            // Option 2: save document change, making it appear a second time
+            var dequeueCount = cosmosDBQueueMessage.Data.GetPropertyValue<int?>("dequeueCount");
+            cosmosDBQueueMessage.Data.SetPropertyValue("dequeueCount", 1 + (dequeueCount ?? 0));
+
+            await documentClient.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(this.databaseId, this.collectionName, cosmosDBQueueMessage.Data.Id), cosmosDBQueueMessage.Data,
+                new RequestOptions
+                {
+                    AccessCondition = new Microsoft.Azure.Documents.Client.AccessCondition
+                    {
+                        Condition = cosmosDBQueueMessage.Data.ETag,
+                        Type = AccessConditionType.IfMatch
+                    }
+                }).ConfigureAwait(false);
         }
-
-        internal async Task Complete()
-        {
-            await this.completer.Complete().ConfigureAwait(false);
-        }
-
-        public Document Data { get; private set; }
-
-        public string Id => this.Data?.Id ?? string.Empty;
     }
 }

@@ -95,5 +95,11 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.DataAccess
         /// <param name="querySpec">The sql query.</param>
         /// <returns>The query result set.</returns>
         IQueryable<T> CreateDocumentQuery<T>(string documentCollectionUri, SqlQuerySpec querySpec);
+
+        /// <summary>
+        /// Gets the document client
+        /// </summary>
+        /// <returns>Return the document client</returns>
+        DocumentClient GetDocumentClient();
     }
 }
