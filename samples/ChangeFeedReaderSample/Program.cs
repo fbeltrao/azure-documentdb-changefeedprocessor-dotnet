@@ -25,13 +25,13 @@ namespace ChangeFeedReaderSample
 
             Task feedingTask = StartFeedingDataAsync(dbUri, key, collectionName, cts.Token);
 
-            var processor = await RunChangeFeedProcessorAsync(dbUri, key, collectionName);
+            var reader = await RunChangeFeedProcessorAsync(dbUri, key, collectionName);
 
             Console.WriteLine("Running...[Press ENTER to read, exit to stop]");
             var input = Console.ReadLine();
             while (!input.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
             {
-                var changeFeed = await processor.ReadAsync().ConfigureAwait(false);
+                var changeFeed = await reader.ReadAsync().ConfigureAwait(false);
                 Console.WriteLine($"Read {changeFeed.Docs.Count} documents");
                 await changeFeed.SaveCheckpointAsync().ConfigureAwait(false);
 
@@ -41,7 +41,7 @@ namespace ChangeFeedReaderSample
             Console.WriteLine("Stopping...");
             cts.Cancel();
             await feedingTask.ConfigureAwait(false);
-            await processor.StopAsync().ConfigureAwait(false);
+            await reader.StopAsync().ConfigureAwait(false);
             Console.WriteLine("Stopped");
             Console.ReadLine();
         }
@@ -97,10 +97,10 @@ namespace ChangeFeedReaderSample
                      MasterKey = key
                  });
 
-            var processor = await builder.BuildAsync();
+            var reader = await builder.BuildAsync();
 
-            await processor.StartAsync().ConfigureAwait(false);
-            return processor;
+            await reader.StartAsync().ConfigureAwait(false);
+            return reader;
         }
 
     }

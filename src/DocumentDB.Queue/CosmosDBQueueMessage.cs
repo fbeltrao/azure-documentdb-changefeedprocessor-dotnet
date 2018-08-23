@@ -1,4 +1,5 @@
 ﻿using Microsoft.Azure.Documents;
+using System;
 using System.Threading.Tasks;
 
 namespace DocumentDB.Queue
@@ -15,11 +16,18 @@ namespace DocumentDB.Queue
 
         internal async Task Complete()
         {
-            await this.completer.Complete().ConfigureAwait(false);
+            if (this.completer != null)
+                await this.completer.Complete().ConfigureAwait(false);
         }
 
         public Document Data { get; private set; }
 
         public string Id => this.Data?.Id ?? string.Empty;
+
+        public T GetData<T>() where T: class
+        {
+            // TODO: find if there is a better way to do it
+            return (dynamic)this.Data;
+        }
     }
 }

@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace DocumentDB.Queue
 {
-
     public class CosmosDBQueue
     {
         private readonly IChangeFeedReader changeFeedReader;
@@ -16,7 +15,7 @@ namespace DocumentDB.Queue
         private readonly Uri collectionLink;
         private readonly string collectionName;
 
-        public bool DeleteDocumentOnComplete { get; set; } = true;
+        public bool DeleteDocumentOnComplete { get; set; }
 
         public CosmosDBQueue()
         {
@@ -30,7 +29,7 @@ namespace DocumentDB.Queue
             this.collectionName = documentCollectionInfo.CollectionName;
             this.collectionLink = UriFactory.CreateDocumentCollectionUri(this.databaseId, this.collectionName);
         }
-        public async Task<IReadOnlyList<CosmosDBQueueMessage>> Dequeue()
+        public async Task<CosmosDBQueueMessageCollection> Dequeue()
         {
             var docs = await changeFeedReader.ReadAsync().ConfigureAwait(false);
             var completer = new CosmosDBQueueMessageCompleter(docs);
@@ -41,7 +40,7 @@ namespace DocumentDB.Queue
                 result.Add(new CosmosDBQueueMessage(doc, completer));
             }
 
-            return result;
+            return new CosmosDBQueueMessageCollection(result, completer);
         }
 
         public async Task<string> Enqueue(object messageData)
@@ -50,44 +49,59 @@ namespace DocumentDB.Queue
             return response.Resource.Id;
         }
 
-        public async Task Complete(CosmosDBQueueMessage cosmosDBQueueMessage)
-        {
-            await cosmosDBQueueMessage.Complete().ConfigureAwait(false);
+        //public async Task Complete(CosmosDBQueueMessage cosmosDBQueueMessage, string partitionKey = null)
+        //{
+        //    await cosmosDBQueueMessage.Complete().ConfigureAwait(false);
 
-            // TODO: remove document?
-            if (this.DeleteDocumentOnComplete)
-            {
-                await documentClient.DeleteDocumentAsync(
-                    UriFactory.CreateDocumentUri(this.databaseId, this.collectionName, cosmosDBQueueMessage.Data.Id),
-                    new RequestOptions
-                    {
-                        AccessCondition = new Microsoft.Azure.Documents.Client.AccessCondition
-                        {
-                            Condition = cosmosDBQueueMessage.Data.ETag,
-                            Type = AccessConditionType.IfMatch
-                        }
-                    }).ConfigureAwait(false);
-            }
-        }
+        //    // TODO: remove document?
+        //    if (this.DeleteDocumentOnComplete)
+        //    {
+        //        RequestOptions requestOptions = new RequestOptions
+        //        {
+        //            AccessCondition = new Microsoft.Azure.Documents.Client.AccessCondition
+        //            {
+        //                Condition = cosmosDBQueueMessage.Data.ETag,
+        //                Type = AccessConditionType.IfMatch
+        //            }
+        //        };
 
-        public async Task Abandon(CosmosDBQueueMessage cosmosDBQueueMessage)
+        //        if (!string.IsNullOrEmpty(partitionKey))
+        //            requestOptions.PartitionKey = new Microsoft.Azure.Documents.PartitionKey(partitionKey);
+
+        //        await documentClient.DeleteDocumentAsync(
+        //          UriFactory.CreateDocumentUri(this.databaseId, this.collectionName, cosmosDBQueueMessage.Data.Id),
+        //                requestOptions).ConfigureAwait(false);
+        //    }
+        //}
+
+        /// <summary>
+        /// Abandons a <see cref="CosmosDBQueueMessage"/>, making it appear in a future <see cref="IChangeFeedReader.ReadAsync"/>
+        /// </summary>
+        /// <param name="queueMessage">Queue message</param>
+        /// <param name="partitionKey">Queue message partition key (if one was defined in the Cosmos DB collection)</param>
+        /// <returns></returns>
+        public async Task Abandon(CosmosDBQueueMessage queueMessage, string partitionKey = null)
         {
             // Option 1: just don't forward the reader, and reset the continuation value.
             // The problem lies in having other messages that were already dequeued, which saved the cursor ahead
 
             // Option 2: save document change, making it appear a second time
-            var dequeueCount = cosmosDBQueueMessage.Data.GetPropertyValue<int?>("dequeueCount");
-            cosmosDBQueueMessage.Data.SetPropertyValue("dequeueCount", 1 + (dequeueCount ?? 0));
+            var dequeueCount = queueMessage.Data.GetPropertyValue<int?>("dequeueCount");
+            queueMessage.Data.SetPropertyValue("dequeueCount", 1 + (dequeueCount ?? 0));
 
-            await documentClient.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(this.databaseId, this.collectionName, cosmosDBQueueMessage.Data.Id), cosmosDBQueueMessage.Data,
-                new RequestOptions
+            RequestOptions requestOptions = new RequestOptions
+            {
+                AccessCondition = new Microsoft.Azure.Documents.Client.AccessCondition
                 {
-                    AccessCondition = new Microsoft.Azure.Documents.Client.AccessCondition
-                    {
-                        Condition = cosmosDBQueueMessage.Data.ETag,
-                        Type = AccessConditionType.IfMatch
-                    }
-                }).ConfigureAwait(false);
+                    Condition = queueMessage.Data.ETag,
+                    Type = AccessConditionType.IfMatch
+                }
+            };
+            if (!string.IsNullOrEmpty(partitionKey))
+                requestOptions.PartitionKey = new Microsoft.Azure.Documents.PartitionKey(partitionKey);
+
+            await documentClient.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(this.databaseId, this.collectionName, queueMessage.Data.Id), queueMessage.Data,
+                requestOptions).ConfigureAwait(false);
         }
     }
 }

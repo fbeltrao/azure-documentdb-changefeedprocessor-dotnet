@@ -7,6 +7,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
     using System;
     using System.Collections.Generic;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Documents.ChangeFeedProcessor.FeedProcessing;
 
@@ -16,6 +17,7 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
     public class ChangeFeedDocumentChanges
     {
         private IReadOnlyList<IChangeFeedObserverContext> contexts;
+        private int checkpointSaved = 0;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ChangeFeedDocumentChanges"/> class.
@@ -56,19 +58,23 @@ namespace Microsoft.Azure.Documents.ChangeFeedProcessor.Reader
         /// Saves the checkpoint where the change feed should resume reading.
         /// Does not affect the current reader as the cursor is kept in memory.
         /// Partition redistribution or host restart will resume from the updated checkpoint
+        /// Can be called multiple times (thread-safe)
         /// </summary>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public async Task SaveCheckpointAsync()
         {
             if (this.contexts != null)
             {
-                var tasks = new List<Task>();
-                foreach (var item in this.contexts)
+                if (Interlocked.Exchange(ref this.checkpointSaved, 1) == 0)
                 {
-                    tasks.Add(item.CheckpointAsync());
-                }
+                    var tasks = new List<Task>();
+                    foreach (var item in this.contexts)
+                    {
+                        tasks.Add(item.CheckpointAsync());
+                    }
 
-                await Task.WhenAll(tasks).ConfigureAwait(false);
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                }
             }
         }
 
